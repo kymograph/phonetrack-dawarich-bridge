@@ -1,0 +1,7 @@
+services:
+  bridge:
+    build: .
+    container_name: phonetrack-bridge
+    restart: unless-stopped
+    env_file:
+      - .env
