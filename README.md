@@ -1,6 +1,6 @@
 # PhoneTrack → Dawarich Bridge
 
-A lightweight Dockerized bridge that polls Nextcloud PhoneTrack for the latest device position and forwards it to Dawarich using an OwnTracks‑compatible payload.
+A lightweight Dockerized bridge that polls [Nextcloud PhoneTrack](https://github.com/julien-nc/phonetrack) for the latest device position and forwards it to [Dawarich](https://github.com/Freika/dawarich) using an [OwnTracks‑compatible payload](https://dawarich.app/docs/getting-started/track-your-location/#phonetrack).
 
 ---
 
