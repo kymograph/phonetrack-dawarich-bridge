@@ -59,4 +59,4 @@ upon successful sending to Dawarich.
 
 ## 📄 License
 
-GPLv3V
+This project is licensed under the GPLv3. See the LICENSE file for details.
