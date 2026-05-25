@@ -22,6 +22,13 @@ logger = logging.getLogger("phonetrack-bridge")
 logger.info("Starting Phonetrack bridge (debug mode)")
 
 # -----------------------------------------------------------------------------
+# Constants
+# -----------------------------------------------------------------------------
+
+DAWARICH_ENDPOINT = "/api/v1/owntracks/points"
+
+
+# -----------------------------------------------------------------------------
 # Environment variables
 # -----------------------------------------------------------------------------
 
@@ -37,7 +44,7 @@ SESSION_TOKEN = require_env("SESSION_TOKEN")
 DEVICE_NAME = require_env("DEVICE_NAME")
 
 # Dawarich vars not required in debug mode, but we load them anyway
-DAWARICH_URL = os.getenv("DAWARICH_URL", "").rstrip("/")
+DAWARICH_URL = normalize_dawarich_url(os.getenv("DAWARICH_URL", "").rstrip("/"))
 API_KEY = os.getenv("DAWARICH_API_KEY", "")
 
 POLL_INTERVAL = int(os.getenv("POLL_INTERVAL", "30"))
@@ -90,8 +97,6 @@ def fetch_position():
     return pos
 
 
-
-
 # -----------------------------------------------------------------------------
 # Build OwnTracks-like payload
 # -----------------------------------------------------------------------------
@@ -103,14 +108,18 @@ def build_payload(pos):
     except Exception:
         tst = int(time.time())
 
-    # Speed conversion (m/s → km/h)
-    raw_speed = pos.get("speed") or pos.get("vel")
-    vel = None
-    if raw_speed is not None:
-        try:
-            vel = int(float(raw_speed) * 3.6)
-        except Exception:
-            vel = None
+    # Speed: PhoneTrack stores m/s → Dawarich expects km/h
+    try:
+        speed_ms = float(pos.get("speed", 0.0))
+        vel = round(speed_ms * 3.6, 3)
+    except Exception:
+        vel = 0.000
+
+    # Course (bearing)
+    try:
+        cog = round(float(pos.get("bearing", 0.0)), 3)
+    except Exception:
+        cog = 0.000
 
     return {
         "_type": "location",
@@ -119,12 +128,42 @@ def build_payload(pos):
         "tst": tst,
         "alt": pos.get("altitude"),
         "vel": vel,
-        "cog": pos.get("bearing") or pos.get("cog"),
-        "acc": pos.get("accuracy") or pos.get("acc"),
-        "batt": pos.get("batterylevel") or pos.get("batt"),
+        "cog": cog,
+        "acc": pos.get("accuracy") or 0,
+        "batt": pos.get("batterylevel") or 0,
         "tid": DEVICE_NAME[:2].upper(),
         "device": DEVICE_NAME,
     }
+    
+    
+def normalize_dawarich_url(raw):
+    if not raw:
+        return ""
+    url = raw.strip().rstrip("/")
+
+    # Strip endpoint if user mistakenly included it
+    if url.endswith(DAWARICH_ENDPOINT):
+        url = url[: -len(DAWARICH_ENDPOINT)]
+
+    return url
+
+
+
+def send_to_dawarich(payload):
+    if not DAWARICH_URL or not API_KEY:
+        logger.info("Debug mode: not sending to Dawarich")
+        return
+
+    url = f"{DAWARICH_URL}{DAWARICH_ENDPOINT}"
+    params = {"api_key": API_KEY}
+
+    try:
+        r = requests.post(url, params=params, json=payload, timeout=10, verify=VERIFY_SSL)
+        r.raise_for_status()
+        logger.info("Sent to Dawarich: %s", r.status_code)
+    except Exception as e:
+        logger.error("Failed to send to Dawarich: %s", e)
+
 
 # -----------------------------------------------------------------------------
 # Main loop
@@ -142,6 +181,7 @@ while True:
         if ts != last_ts:
             payload = build_payload(pos)
             logger.info("New position:\n%s", json.dumps(payload, indent=2))
+            send_to_dawarich(payload)
             last_ts = ts
         else:
             logger.debug("No new position")
