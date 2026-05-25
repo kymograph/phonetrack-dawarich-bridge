@@ -29,6 +29,22 @@ DAWARICH_ENDPOINT = "/api/v1/owntracks/points"
 
 
 # -----------------------------------------------------------------------------
+# Helper functions
+# -----------------------------------------------------------------------------
+
+def normalize_dawarich_url(raw):
+    if not raw:
+        return ""
+    url = raw.strip().rstrip("/")
+
+    # Strip endpoint if user mistakenly included it
+    if url.endswith(DAWARICH_ENDPOINT):
+        url = url[: -len(DAWARICH_ENDPOINT)]
+
+    return url
+
+
+# -----------------------------------------------------------------------------
 # Environment variables
 # -----------------------------------------------------------------------------
 
@@ -134,19 +150,6 @@ def build_payload(pos):
         "tid": DEVICE_NAME[:2].upper(),
         "device": DEVICE_NAME,
     }
-    
-    
-def normalize_dawarich_url(raw):
-    if not raw:
-        return ""
-    url = raw.strip().rstrip("/")
-
-    # Strip endpoint if user mistakenly included it
-    if url.endswith(DAWARICH_ENDPOINT):
-        url = url[: -len(DAWARICH_ENDPOINT)]
-
-    return url
-
 
 
 def send_to_dawarich(payload):
