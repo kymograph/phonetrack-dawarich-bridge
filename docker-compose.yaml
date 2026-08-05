@@ -3,5 +3,6 @@ services:
     build: .
     container_name: phonetrack-bridge
     restart: unless-stopped
+    network_mode: bridge
     env_file:
       - .env
